@@ -22,8 +22,11 @@ namespace FPSBoostNotifier
 {
     public class Function
     {
+        ILambdaLogger _logger;
+
         public async Task<Output> FunctionHandler(Input input, ILambdaContext context)
         {
+            _logger = context?.Logger;
             var output = new Output();
 
             using (var httpClient = new HttpClient())
@@ -49,6 +52,7 @@ namespace FPSBoostNotifier
                         {
                             output.Success = false;
                             output.Message = err.Message;
+                            _logger.LogLine($"ERROR: {output.Message}");
                             return output;
                         }
 
@@ -56,6 +60,7 @@ namespace FPSBoostNotifier
                         {
                             output.Success = false;
                             output.Message = "Could not load games list from Major Nelsons site.";
+                            _logger.LogLine($"ERROR: {output.Message}");
                             return output;
                         }
 
@@ -71,6 +76,7 @@ namespace FPSBoostNotifier
 
                         try
                         {
+                            // This won't work running locally because you don't have access to my S3 bucket.
                             var getObjectRequest = new GetObjectRequest()
                             {
                                 BucketName = "files.beeradmoore.com",
@@ -193,6 +199,7 @@ namespace FPSBoostNotifier
 
                             var gamesJson = JsonSerializer.Serialize(liveGamesList, jsonSerializerOptions);
 
+                            // This won't work running locally because you don't have access to my S3 bucket.
                             var putObjectRequest = new PutObjectRequest()
                             {
                                 BucketName = "files.beeradmoore.com",
@@ -212,6 +219,7 @@ namespace FPSBoostNotifier
                     {
                         output.Success = false;
                         output.Message = $"Unable to find HTML table to parse.";
+                        _logger.LogLine($"ERROR: {output.Message}");
                         return output;
                     }
                 }
@@ -219,10 +227,13 @@ namespace FPSBoostNotifier
                 {
                     output.Success = false;
                     output.Message = $"Response StatusCode not expected: {response.StatusCode}";
+                    _logger.LogLine($"ERROR: {output.Message}");
                     return output;
                 }
             }
 
+            _logger.LogLine(output.Message);
+            
             return output;
         }
 
@@ -269,12 +280,12 @@ namespace FPSBoostNotifier
                         if (titleNode.ChildNodes.Count == 1) // assume anchor tag
                         {
                             var anchorTag = titleNode.ChildNodes[0];
-                            game.Title = anchorTag.InnerHtml;
+                            game.Title = System.Web.HttpUtility.HtmlDecode(anchorTag.InnerText);
                             game.Url = anchorTag.Attributes["href"].Value;
                         }
                         else
                         {
-                            game.Title = titleNode.InnerHtml;
+                            game.Title = System.Web.HttpUtility.HtmlDecode(titleNode.InnerText);
                         }
 
                         game.SeriesXFPS = gameRow.ChildNodes[1].InnerHtml switch
@@ -303,6 +314,8 @@ namespace FPSBoostNotifier
                         games.Add(game);
                     }
 
+                    games.Sort();
+
                     return games;
                 }
                 else
@@ -316,10 +329,32 @@ namespace FPSBoostNotifier
             }
         }
 
-        string _slackWebhookUrl = "";
+
         async Task SendSlackMessage(string message)
         {
-            await Task.Delay(50);
+            using (var httpClient = new HttpClient())
+            {
+                var payload = new
+                {
+                    channel = "#general",
+                    text = message,
+                    username = "FPSBoost Notifier",
+                    icon_url = "https://files.beeradmoore.com/fpsboost/majornelson_icon.jpg",
+                };
+
+                var jsonData = JsonSerializer.Serialize(payload);
+                var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+
+                try
+                {
+                    var slackWebhookUrl = ""; // Your Slack webhook URL goes here.
+                    var response = await httpClient.PostAsync(slackWebhookUrl, content);
+                }
+                catch (Exception err)
+                {
+                    _logger.LogLine($"ERROR: {err.Message}");
+                }
+            }
         }
     }
 }

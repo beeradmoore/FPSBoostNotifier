@@ -1,8 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
-namespace FPSBoostNotifier
+namespace FPSBoostNotifier 
 {
     public enum FPSBoost
     {
@@ -11,7 +12,7 @@ namespace FPSBoostNotifier
         OneTwenty = 120,
     };
 
-    public class Game
+    public class Game : IEquatable<Game>, IComparable<Game>
     {
         [JsonPropertyName("title")]
         public string Title { get; set; } = String.Empty;
@@ -27,6 +28,26 @@ namespace FPSBoostNotifier
 
         [JsonPropertyName("off_by_default_series_x")]
         public bool OffByDefaultSeriesX { get; set; }
+
+        public int CompareTo([AllowNull] Game other)
+        {
+            if (other == null)
+            {
+                return 1;
+            }
+
+            return Title.CompareTo(other.Title);
+        }
+
+        public bool Equals([AllowNull] Game other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            return other.Title == Title;
+        }
 
         internal bool HasGameChanged(Game otherGame)
         {
