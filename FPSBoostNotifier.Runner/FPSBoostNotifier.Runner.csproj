@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(RunConfiguration)' == 'Default' ">
+    <StartAction>Project</StartAction>
+    <ExternalConsole>false</ExternalConsole>
+    <ConsolePause>false</ConsolePause>
+    <EnvironmentVariables>
+      <Variable name="AWS_PROFILE" value="FPSBoostNotifier_Role" />
+    </EnvironmentVariables>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FPSBoostNotifier\FPSBoostNotifier.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Amazon.Lambda.TestUtilities" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Amazon.Lambda.TestUtilities" Version="2.0.0" />
+  </ItemGroup>
+</Project>
